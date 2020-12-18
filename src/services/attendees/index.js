@@ -7,8 +7,8 @@ const sgMail = require("@sendgrid/mail");
 const { Transform } = require("json2csv");
 const { pipeline } = require("stream");
 const { join } = require("path");
-const { createReadStream } = require("fs-extra");
-
+const { createReadStream, createWriteStream } = require("fs-extra");
+// const fs = require("fs");
 let PdfPrinter = require("pdfmake");
 let fonts = {
   Roboto: {
@@ -110,41 +110,42 @@ attendeesRouter.get("/csv", async (req, res, next) => {
 attendeesRouter.get("/:id/createPDF", async (req, res, next) => {
   try {
     const attendeesDB = await getAttendees();
-    const attendee = attendeesDB.filter((attendee) => {
+    const attendee = attendeesDB.find((attendee) => {
       return attendee._id === req.params.id;
     });
 
     if (attendee) {
       // and you pass the doc-definition-object to createPdfKitDocument method
+      console.log(attendee);
+
+      const name = { text: attendee.firstName };
+      const email = { text: attendee.email };
+      const arrival = { text: attendee.arrivalTime };
+      //   const strings = [
+      //     `FIRST NAME: ${name}` + name,
+      //     `SECOND NAME: ${attendee.secondName}`,
+      //     `EMAIL: ${attendee.email}`,
+      //     `ARRIVAL TIME: ${attendee.arrivalTime}`,
+      //   ];
+      console.log(attendee);
       let docDefinition = {
-        content: [
-          "First paragraph",
-          "Another paragraph, this time a little bit longer to make sure, this line will be divided into at least two lines",
-        ],
+        content: [name, email, arrival],
       };
-      let pdfDoc = printer.createPdfKitDocument(docDefinition);
+      const pdfDoc = printer.createPdfKitDocument(docDefinition);
 
       // pdfDoc is a stream so you can pipe it to the file system
-      let fs = require("fs");
-      pdfDoc.pipe(fs.createWriteStream("basics.pdf"));
+      //const fileName = `pdf.pdf`;
+      //const writeStream = createWriteStream(fileName);
+      //   writeStream.on("finish", () => {
+      //     res.json({
+      //       done: true,
+      //       fileName,
+      //     });
+      //   });//
+      //const pdfDoc = printer.createPdfKitDocument(docDefinition);
+      res.setHeader("Content-Type", "application/pdf");
+      pdfDoc.pipe(res);
       pdfDoc.end();
-      //   const attendeesPath = join(__dirname, "./attendees.json");
-      //   const jsonReadableStream = createReadStream(attendeesPath);
-      //   res.setHeader(
-      //     "Content-Disposition",
-      //     "attachment; filename=attendees.csv"
-      //   );
-      //   let pdf = pdfMake.createPdf(attendeesDB);
-      //   pipeline(jsonReadableStream, pdf, res, (err) => {
-      //     if (err) {
-      //       console.log(err);
-      //       next(err);
-      //     } else {
-      //       console.log("Done");
-      //       pdf.download(`pdf-${+new Date()}.pdf`);
-      //     }
-      //   });
-      //await pdfMake.createPdf(attendeesDB).download(`pdf-${+new Date()}.pdf`);
     } else {
       let error = new Error();
       error.httpStatusCode = 404;
